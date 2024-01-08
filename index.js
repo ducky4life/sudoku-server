@@ -8,32 +8,52 @@ const port = 8000;
 
 const clients = {};
 
-function broadcastMessage(dataStr) {
-  for (let userId in clients) {
-    let client = clients[userId];
-    if (client.readyState === WebSocket.OPEN) {
-      client.send(dataStr);
+/**
+ * Broadcast a message from one client to all other clients.
+ */
+function broadcastMessage(dataStr, clientId) {
+  for (let otherId in clients) {
+    let otherClient = clients[otherId];
+    // if connected, and not the sending client
+    if (otherId !== clientId && otherClient.readyState === WebSocket.OPEN) {
+      otherClient.send(dataStr);
     }
   }
 }
 
-function handleClose(event, userId) {
-  console.log(`${userId} disconnected`);
-  delete clients[userId];
+function handleClose(clientId) {
+  console.log(`${clientId} disconnected`);
+  delete clients[clientId];
+
+  // notify other clients
+  let disconnectMessage = {
+    userId: clientId,
+    message: { type: "disconnect" },
+  };
+  broadcastMessage(JSON.stringify(disconnectMessage), clientId);
 }
 
-function handleMessage(message, userId) {
+function handleMessage(message, clientId) {
   console.log("message", message.toString());
-  broadcastMessage(message.toString());
+  // forward to all other clients
+  broadcastMessage(message.toString(), clientId);
 }
 
 wsServer.on("connection", (connection) => {
-  const userId = uuidv4();
-  clients[userId] = connection;
-  console.log(`${userId} connected`);
+  // create a new id for this client
+  const clientId = uuidv4();
+  clients[clientId] = connection;
+  console.log(`${clientId} connected`);
 
-  connection.on("message", (message) => handleMessage(message, userId));
-  connection.on("close", (event) => handleClose(event, userId));
+  connection.on("message", (message) => handleMessage(message, clientId));
+  connection.on("close", () => handleClose(clientId));
+
+  // send the client it's new id
+  let clientIdMessage = {
+    userId: clientId,
+    message: { type: "client-id" },
+  };
+  connection.send(JSON.stringify(clientIdMessage));
 });
 
 server.listen(port, () => {
