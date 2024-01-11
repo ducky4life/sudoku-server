@@ -26,11 +26,11 @@ function handleClose(clientId) {
   delete clients[clientId];
 
   // notify other clients
-  let disconnectMessage = {
+  let leaveMessage = {
     userId: clientId,
-    message: { type: "disconnect" },
+    message: { type: "client-leave" },
   };
-  broadcastMessage(JSON.stringify(disconnectMessage), clientId);
+  broadcastMessage(JSON.stringify(leaveMessage), clientId);
 }
 
 function handleMessage(message, clientId) {
@@ -54,6 +54,13 @@ wsServer.on("connection", (connection) => {
     message: { type: "client-id" },
   };
   connection.send(JSON.stringify(clientIdMessage));
+
+  // notify others that this new client joined
+  let joinMessage = {
+    userId: clientId,
+    message: { type: "client-join" },
+  };
+  broadcastMessage(JSON.stringify(joinMessage), clientId);
 });
 
 server.listen(port, () => {
