@@ -34,7 +34,11 @@ function handleClose(clientId) {
 }
 
 function handleMessage(message, clientId) {
-  console.log("message", message.toString());
+  var messageStr = message.toString();
+  if (messageStr.length > 150) {
+    messageStr = `${messageStr.slice(0, 150)}...(${messageStr.length})`;
+  }
+  console.log("message", messageStr);
   // forward to all other clients
   broadcastMessage(message.toString(), clientId);
 }
